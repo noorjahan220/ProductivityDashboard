@@ -1,19 +1,25 @@
-import { createContext, useEffect, useState } from "react";
-import { app } from "../firebase/firebase.config";
+import React, { createContext, useEffect, useState } from "react";
 import {
-  getAuth,
-  onAuthStateChanged,
   createUserWithEmailAndPassword,
+  getAuth,
+  GoogleAuthProvider,
+  onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
+  updateProfile,
 } from "firebase/auth";
+import { app } from "../firebase/firebase.config";
+import useAxiosSecure from "../hooks/useAxiosSecure";
 
-// ✅ Export the context so it can be imported elsewhere
+
 export const AuthContext = createContext(null);
 
 const auth = getAuth(app);
 
 const AuthProvider = ({ children }) => {
+  const axiosSecure = useAxiosSecure();  // ✅ Now safe, because AuthProvider is inside <BrowserRouter>
+
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -32,24 +38,63 @@ const AuthProvider = ({ children }) => {
     return signOut(auth);
   };
 
+  const updateUserProfile = (name, photo) => {
+    return updateProfile(auth.currentUser, {
+      displayName: name,
+      photoURL: photo,
+    });
+  };
+
+  const signInWithGoogle = () => {
+    const googleProvider = new GoogleAuthProvider();
+    setLoading(true);
+    return signInWithPopup(auth, googleProvider);
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-      console.log("Current User:", currentUser);
+      if (currentUser) {
+        const userInfo = { email: currentUser.email };
+        const storedToken = localStorage.getItem("access-token");
+
+        if (storedToken) {
+          setUser(currentUser);
+          setLoading(false);
+        } else {
+          axiosSecure
+            .post("/jwt", userInfo)
+            .then((res) => {
+              if (res.data.token) {
+                localStorage.setItem("access-token", res.data.token);
+                setUser(currentUser);
+              }
+              setLoading(false);
+            })
+            .catch(() => {
+              setLoading(false);
+            });
+        }
+      } else {
+        localStorage.removeItem("access-token");
+        setUser(null);
+        setLoading(false);
+      }
     });
 
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [axiosSecure]);
 
   const authInfo = {
     user,
     loading,
     createUser,
-    signInUser: signIn, // renamed to match usage in Login.jsx
+    signIn,
     logOut,
+    updateUserProfile,
+    signInWithGoogle,
+    axiosSecure,
   };
 
   return (

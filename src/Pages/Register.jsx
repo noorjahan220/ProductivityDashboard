@@ -2,10 +2,13 @@ import { useContext } from 'react';
 import { AuthContext } from '../Provider/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { updateProfile } from 'firebase/auth';
+import useAxiosSecure from '../hooks/useAxiosSecure';
+
 
 const Register = () => {
   const { createUser } = useContext(AuthContext);
   const navigate = useNavigate();
+  const axiosSecure = useAxiosSecure();
 
   const handleRegister = async (event) => {
     event.preventDefault();
@@ -18,13 +21,18 @@ const Register = () => {
       const result = await createUser(email, password);
       console.log("Registration successful:", result.user);
 
-      
       await updateProfile(result.user, {
         displayName: name,
       });
 
+      // Using axiosSecure instead of fetch
+      const res = await axiosSecure.post('/register', { email });
+      
+      // Assuming the response data contains { token: '...' }
+      localStorage.setItem('access-token', res.data.token);
+      navigate("/");
+
       form.reset();
-      navigate("/"); 
     } catch (error) {
       console.error("Registration failed:", error.message);
     }

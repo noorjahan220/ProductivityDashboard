@@ -1,9 +1,9 @@
 import { createBrowserRouter } from "react-router-dom";
 import Main from "../layout/Main";
-import Login from "../Pages/Login";
-import Register from "../Pages/Register";
-import Dashboard from "../Pages/Dashboard";
-import PrivateRoute from "../PrivateRoute/PrivateRoute"; // ✅ Make sure this is correctly imported
+import Login from './../Pages/Login';
+import Register from './../Pages/Register';
+import Dashboard from './../Pages/Dashboard';
+import PrivateRoute from './../PrivateRoute/PrivateRoute';
 
 const router = createBrowserRouter([
   {
