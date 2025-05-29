@@ -1,90 +1,72 @@
+// src/Provider/AuthProvider.jsx
 import React, { createContext, useEffect, useState } from "react";
 import {
   createUserWithEmailAndPassword,
-  getAuth,
-  GoogleAuthProvider,
-  onAuthStateChanged,
   signInWithEmailAndPassword,
-  signInWithPopup,
   signOut,
+  onAuthStateChanged,
   updateProfile,
 } from "firebase/auth";
-import { app } from "../firebase/firebase.config";
-import useAxiosSecure from "../hooks/useAxiosSecure";
-
+// import { auth } from "../firebase/firebase.config";
+import { auth } from './../firebase/firebase.config';
 
 export const AuthContext = createContext(null);
 
-const auth = getAuth(app);
-
 const AuthProvider = ({ children }) => {
-  const axiosSecure = useAxiosSecure();  // ✅ Now safe, because AuthProvider is inside <BrowserRouter>
-
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const createUser = (email, password) => {
-    setLoading(true);
-    return createUserWithEmailAndPassword(auth, email, password);
+  // Create new user
+  const createUser = async (email, password) => {
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      return result;
+    } catch (error) {
+      throw error;
+    }
   };
 
-  const signIn = (email, password) => {
-    setLoading(true);
-    return signInWithEmailAndPassword(auth, email, password);
+  // Sign in user
+  const signIn = async (email, password) => {
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      return result;
+    } catch (error) {
+      throw error;
+    }
   };
 
-  const logOut = () => {
-    setLoading(true);
-    return signOut(auth);
+  // Sign out user
+  const logOut = async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+    } catch (error) {
+      throw error;
+    }
   };
 
-  const updateUserProfile = (name, photo) => {
-    return updateProfile(auth.currentUser, {
-      displayName: name,
-      photoURL: photo,
-    });
+  // Update user profile
+  const updateUserProfile = async (name, photo) => {
+    try {
+      await updateProfile(auth.currentUser, {
+        displayName: name,
+        photoURL: photo,
+      });
+    } catch (error) {
+      throw error;
+    }
   };
 
-  const signInWithGoogle = () => {
-    const googleProvider = new GoogleAuthProvider();
-    setLoading(true);
-    return signInWithPopup(auth, googleProvider);
-  };
-
+  // Monitor auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        const userInfo = { email: currentUser.email };
-        const storedToken = localStorage.getItem("access-token");
-
-        if (storedToken) {
-          setUser(currentUser);
-          setLoading(false);
-        } else {
-          axiosSecure
-            .post("/jwt", userInfo)
-            .then((res) => {
-              if (res.data.token) {
-                localStorage.setItem("access-token", res.data.token);
-                setUser(currentUser);
-              }
-              setLoading(false);
-            })
-            .catch(() => {
-              setLoading(false);
-            });
-        }
-      } else {
-        localStorage.removeItem("access-token");
-        setUser(null);
-        setLoading(false);
-      }
+      setUser(currentUser);
+      setLoading(false);
     });
 
-    return () => {
-      unsubscribe();
-    };
-  }, [axiosSecure]);
+    return () => unsubscribe();
+  }, []);
 
   const authInfo = {
     user,
@@ -93,12 +75,12 @@ const AuthProvider = ({ children }) => {
     signIn,
     logOut,
     updateUserProfile,
-    signInWithGoogle,
-    axiosSecure,
   };
 
   return (
-    <AuthContext.Provider value={authInfo}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={authInfo}>
+      {children}
+    </AuthContext.Provider>
   );
 };
 
